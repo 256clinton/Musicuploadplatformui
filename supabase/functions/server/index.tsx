@@ -368,6 +368,186 @@ app.get('/make-server-d629660d/stats/admin', async (c) => {
   }
 });
 
+// ================ ADS ROUTES ================
+
+// Create ad (admin only)
+app.post('/make-server-d629660d/ads', async (c) => {
+  const { user, error } = await getUserFromToken(c.req.header('Authorization'));
+  
+  if (error || !user) {
+    return c.json({ error: error || 'Unauthorized' }, 401);
+  }
+
+  const userProfile = await kv.get(`user:${user.id}`);
+  if (userProfile?.role !== 'admin') {
+    return c.json({ error: 'Admin access required' }, 403);
+  }
+
+  try {
+    const body = await c.req.json();
+    const { title, description, imageUrl, linkUrl, isActive } = body;
+
+    if (!title || !imageUrl) {
+      return c.json({ error: 'Title and image URL are required' }, 400);
+    }
+
+    const adId = `ad:${Date.now()}`;
+    const ad = {
+      id: adId,
+      title,
+      description: description || '',
+      imageUrl,
+      linkUrl: linkUrl || '',
+      isActive: isActive !== undefined ? isActive : true,
+      clicks: 0,
+      impressions: 0,
+      createdAt: new Date().toISOString(),
+      createdBy: user.id
+    };
+
+    await kv.set(adId, ad);
+
+    return c.json({ ad });
+  } catch (error) {
+    console.error('Error creating ad:', error);
+    return c.json({ error: 'Failed to create ad' }, 500);
+  }
+});
+
+// Get all ads (admin gets all, public gets active only)
+app.get('/make-server-d629660d/ads', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    const { user } = await getUserFromToken(authHeader);
+    
+    const allAds = await kv.getByPrefix('ad:');
+    
+    // If admin, return all ads; otherwise return only active ads
+    if (user) {
+      const userProfile = await kv.get(`user:${user.id}`);
+      if (userProfile?.role === 'admin') {
+        return c.json({ ads: allAds });
+      }
+    }
+    
+    // Public or non-admin users only see active ads
+    const activeAds = allAds.filter((ad: any) => ad.isActive);
+    return c.json({ ads: activeAds });
+  } catch (error) {
+    console.error('Error fetching ads:', error);
+    return c.json({ error: 'Failed to fetch ads' }, 500);
+  }
+});
+
+// Update ad (admin only)
+app.patch('/make-server-d629660d/ads/:id', async (c) => {
+  const { user, error } = await getUserFromToken(c.req.header('Authorization'));
+  
+  if (error || !user) {
+    return c.json({ error: error || 'Unauthorized' }, 401);
+  }
+
+  const userProfile = await kv.get(`user:${user.id}`);
+  if (userProfile?.role !== 'admin') {
+    return c.json({ error: 'Admin access required' }, 403);
+  }
+
+  try {
+    const adId = c.req.param('id');
+    const body = await c.req.json();
+
+    const ad = await kv.get(adId);
+    if (!ad) {
+      return c.json({ error: 'Ad not found' }, 404);
+    }
+
+    // Update ad fields
+    const updatedAd = {
+      ...ad,
+      ...body,
+      updatedAt: new Date().toISOString(),
+      updatedBy: user.id
+    };
+
+    await kv.set(adId, updatedAd);
+
+    return c.json({ ad: updatedAd });
+  } catch (error) {
+    console.error('Error updating ad:', error);
+    return c.json({ error: 'Failed to update ad' }, 500);
+  }
+});
+
+// Delete ad (admin only)
+app.delete('/make-server-d629660d/ads/:id', async (c) => {
+  const { user, error } = await getUserFromToken(c.req.header('Authorization'));
+  
+  if (error || !user) {
+    return c.json({ error: error || 'Unauthorized' }, 401);
+  }
+
+  const userProfile = await kv.get(`user:${user.id}`);
+  if (userProfile?.role !== 'admin') {
+    return c.json({ error: 'Admin access required' }, 403);
+  }
+
+  try {
+    const adId = c.req.param('id');
+    const ad = await kv.get(adId);
+    
+    if (!ad) {
+      return c.json({ error: 'Ad not found' }, 404);
+    }
+
+    await kv.del(adId);
+
+    return c.json({ message: 'Ad deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting ad:', error);
+    return c.json({ error: 'Failed to delete ad' }, 500);
+  }
+});
+
+// Track ad click
+app.post('/make-server-d629660d/ads/:id/click', async (c) => {
+  try {
+    const adId = c.req.param('id');
+    const ad = await kv.get(adId);
+    
+    if (!ad) {
+      return c.json({ error: 'Ad not found' }, 404);
+    }
+
+    ad.clicks = (ad.clicks || 0) + 1;
+    await kv.set(adId, ad);
+
+    return c.json({ message: 'Click tracked' });
+  } catch (error) {
+    console.error('Error tracking click:', error);
+    return c.json({ error: 'Failed to track click' }, 500);
+  }
+});
+
+// Track ad impression
+app.post('/make-server-d629660d/ads/:id/impression', async (c) => {
+  try {
+    const adId = c.req.param('id');
+    const ad = await kv.get(adId);
+    
+    if (!ad) {
+      return c.json({ error: 'Ad not found' }, 404);
+    }
+
+    ad.impressions = (ad.impressions || 0) + 1;
+    await kv.set(adId, ad);
+
+    return c.json({ message: 'Impression tracked' });
+  } catch (error) {
+    console.error('Error tracking impression:', error);
+    return c.json({ error: 'Failed to track impression' }, 500);
+  }
+});
+
 // Health check
 app.get('/make-server-d629660d/health', (c) => {
   return c.json({ status: 'ok', timestamp: new Date().toISOString() });

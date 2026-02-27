@@ -3,6 +3,7 @@ import { Header } from "./components/Header";
 import { UploadModal } from "./components/UploadModal";
 import { TrackCard } from "./components/TrackCard";
 import { MusicPlayer } from "./components/MusicPlayer";
+import { AdBanner } from "./components/AdBanner";
 
 interface Track {
   id: string;
@@ -135,6 +136,9 @@ function App() {
             </div>
           </div>
         </div>
+
+        {/* Ad Banner */}
+        <AdBanner />
 
         {/* Tracks Grid */}
         <div className="mb-8">

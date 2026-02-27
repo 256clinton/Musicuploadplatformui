@@ -14,12 +14,18 @@ import {
   Music2,
   TrendingUp,
   Clock,
-  Loader2
+  Loader2,
+  BarChart3,
+  Plus,
+  Edit,
+  Trash2,
+  ExternalLink
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { projectId, publicAnonKey } from '../../../utils/supabase/info';
+import { AdsManagement } from '../components/AdsManagement';
 
-type Tab = 'dashboard' | 'tracks' | 'users' | 'payments' | 'settings';
+type Tab = 'dashboard' | 'tracks' | 'users' | 'ads' | 'settings';
 
 interface Track {
   id: string;
@@ -242,6 +248,15 @@ export function AdminDashboard() {
             Users
           </button>
           <button
+            onClick={() => setActiveTab('ads')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              activeTab === 'ads' ? 'bg-white/10' : 'hover:bg-white/5'
+            }`}
+          >
+            <BarChart3 className="w-5 h-5" />
+            Ads
+          </button>
+          <button
             onClick={() => setActiveTab('settings')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
               activeTab === 'settings' ? 'bg-white/10' : 'hover:bg-white/5'
@@ -269,12 +284,14 @@ export function AdminDashboard() {
               {activeTab === 'dashboard' && 'Dashboard Overview'}
               {activeTab === 'tracks' && 'Track Management'}
               {activeTab === 'users' && 'User Management'}
+              {activeTab === 'ads' && 'Ad Management'}
               {activeTab === 'settings' && 'Settings'}
             </h2>
             <p className="text-gray-600">
               {activeTab === 'dashboard' && 'Monitor your platform performance'}
               {activeTab === 'tracks' && 'Review and approve track submissions'}
               {activeTab === 'users' && 'Manage artist accounts'}
+              {activeTab === 'ads' && 'Manage advertisements'}
               {activeTab === 'settings' && 'Configure platform settings'}
             </p>
           </div>
@@ -442,6 +459,11 @@ export function AdminDashboard() {
                 </tbody>
               </table>
             </div>
+          )}
+
+          {/* Ads Tab */}
+          {activeTab === 'ads' && (
+            <AdsManagement />
           )}
 
           {/* Settings Tab */}
