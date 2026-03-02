@@ -1,5 +1,5 @@
 import { Play, Pause, SkipBack, SkipForward, Volume2, Repeat, Shuffle } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface MusicPlayerProps {
   currentTrack: {
@@ -7,36 +7,98 @@ interface MusicPlayerProps {
     artist: string;
     coverUrl: string;
     duration: string;
+    audioUrl?: string;
   } | null;
   isPlaying: boolean;
   onPlayPause: () => void;
 }
 
 export function MusicPlayer({ currentTrack, isPlaying, onPlayPause }: MusicPlayerProps) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState('0:00');
   const [volume, setVolume] = useState(70);
+  const [duration, setDuration] = useState(0);
 
+  // Initialize audio element
   useEffect(() => {
-    if (isPlaying && currentTrack) {
-      const interval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 100) {
-            return 0;
-          }
-          return prev + 0.5;
-        });
-      }, 300);
-      return () => clearInterval(interval);
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+      audioRef.current.volume = volume / 100;
     }
-  }, [isPlaying, currentTrack]);
 
+    const audio = audioRef.current;
+
+    const handleTimeUpdate = () => {
+      if (audio.duration) {
+        setProgress((audio.currentTime / audio.duration) * 100);
+        const mins = Math.floor(audio.currentTime / 60);
+        const secs = Math.floor(audio.currentTime % 60);
+        setCurrentTime(`${mins}:${secs.toString().padStart(2, '0')}`);
+      }
+    };
+
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration);
+    };
+
+    const handleEnded = () => {
+      onPlayPause();
+    };
+
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('ended', handleEnded);
+
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, [onPlayPause]);
+
+  // Handle track changes
   useEffect(() => {
-    const seconds = Math.floor((progress / 100) * 180);
+    if (audioRef.current && currentTrack?.audioUrl) {
+      audioRef.current.src = currentTrack.audioUrl;
+      if (isPlaying) {
+        audioRef.current.play().catch(err => console.error('Error playing audio:', err));
+      }
+    }
+  }, [currentTrack]);
+
+  // Handle play/pause changes
+  useEffect(() => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.play().catch(err => console.error('Error playing audio:', err));
+      } else {
+        audioRef.current.pause();
+      }
+    }
+  }, [isPlaying]);
+
+  // Handle volume changes
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume / 100;
+    }
+  }, [volume]);
+
+  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (audioRef.current && duration) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const percentage = x / rect.width;
+      audioRef.current.currentTime = percentage * duration;
+    }
+  };
+
+  const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    setCurrentTime(`${mins}:${secs.toString().padStart(2, '0')}`);
-  }, [progress]);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   if (!currentTrack) {
     return null;
@@ -89,13 +151,18 @@ export function MusicPlayer({ currentTrack, isPlaying, onPlayPause }: MusicPlaye
             {/* Progress Bar */}
             <div className="flex items-center gap-3">
               <span className="text-xs text-gray-400 w-10 text-right">{currentTime}</span>
-              <div className="flex-1 h-1 bg-gray-700 rounded-full overflow-hidden">
+              <div 
+                className="flex-1 h-1 bg-gray-700 rounded-full overflow-hidden cursor-pointer"
+                onClick={handleProgressClick}
+              >
                 <div
                   className="h-full bg-gradient-to-r from-yellow-500 to-red-600 transition-all"
                   style={{ width: `${progress}%` }}
                 />
               </div>
-              <span className="text-xs text-gray-400 w-10">{currentTrack.duration}</span>
+              <span className="text-xs text-gray-400 w-10">
+                {duration ? formatDuration(duration) : currentTrack.duration}
+              </span>
             </div>
           </div>
 

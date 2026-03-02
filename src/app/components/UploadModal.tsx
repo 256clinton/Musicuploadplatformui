@@ -1,8 +1,9 @@
 import { X, Upload, Music, Image, Loader2, ArrowLeft, ArrowRight } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DistributionSteps } from './DistributionSteps';
 import { PlatformSelector } from './PlatformSelector';
 import { PaymentPlans } from './PaymentPlans';
+import { PaymentModal } from './PaymentModal';
 import { projectId } from '../../../utils/supabase/info';
 
 interface UploadModalProps {
@@ -23,10 +24,19 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
   const [artist, setArtist] = useState('');
   const [genre, setGenre] = useState('Afrobeat');
   const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState('album');
   const [error, setError] = useState('');
+  const [audioUrl, setAudioUrl] = useState('');
+  const [coverUrl, setCoverUrl] = useState('');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [uploadEligibility, setUploadEligibility] = useState({
+    freeUploadsRemaining: 2,
+    requiresPayment: false,
+    freeUploadsUsed: 0
+  });
   const [platforms, setPlatforms] = useState([
     { id: 'spotify', name: 'Spotify', logo: '🎵', selected: true },
     { id: 'apple', name: 'Apple Music', logo: '🍎', selected: true },
@@ -40,6 +50,38 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
   ]);
 
   if (!isOpen) return null;
+
+  // Check upload eligibility when modal opens
+  useEffect(() => {
+    const checkEligibility = async () => {
+      const accessToken = localStorage.getItem('accessToken');
+      if (!accessToken) return;
+
+      try {
+        const apiUrl = `https://${projectId}.supabase.co/functions/v1/make-server-d629660d`;
+        const response = await fetch(`${apiUrl}/upload/check`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+          setUploadEligibility({
+            freeUploadsRemaining: data.freeUploadsRemaining,
+            requiresPayment: data.requiresPayment,
+            freeUploadsUsed: data.freeUploadsUsed
+          });
+        }
+      } catch (error) {
+        console.error('Error checking upload eligibility:', error);
+      }
+    };
+
+    if (isOpen) {
+      checkEligibility();
+    }
+  }, [isOpen]);
 
   const handleAudioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -56,6 +98,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
         setCoverPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
+      setCoverFile(file);
     }
   };
 
