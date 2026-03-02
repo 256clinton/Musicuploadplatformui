@@ -49,8 +49,6 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
     { id: 'pandora', name: 'Pandora', logo: '📻', selected: false },
   ]);
 
-  if (!isOpen) return null;
-
   // Check upload eligibility when modal opens
   useEffect(() => {
     const checkEligibility = async () => {
@@ -82,6 +80,8 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       checkEligibility();
     }
   }, [isOpen]);
+
+  if (!isOpen) return null;
 
   const handleAudioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

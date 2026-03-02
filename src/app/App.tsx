@@ -14,6 +14,7 @@ interface Track {
   duration: string;
   plays: number;
   uploadDate: string;
+  audioUrl?: string;
 }
 
 function App() {
@@ -36,6 +37,7 @@ function App() {
       duration: "3:45",
       plays: 12543,
       uploadDate: "2026-02-15",
+      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
     },
     {
       id: "2",
@@ -47,6 +49,7 @@ function App() {
       duration: "4:12",
       plays: 8934,
       uploadDate: "2026-02-18",
+      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
     },
     {
       id: "3",
@@ -58,6 +61,7 @@ function App() {
       duration: "3:28",
       plays: 15672,
       uploadDate: "2026-02-10",
+      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
     },
     {
       id: "4",
@@ -69,6 +73,7 @@ function App() {
       duration: "4:03",
       plays: 21456,
       uploadDate: "2026-02-05",
+      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
     },
   ]);
 
@@ -79,6 +84,11 @@ function App() {
     coverUrl: string;
     audioFile: File | null;
   }) => {
+    // Create a URL for the uploaded audio file if it exists
+    const audioUrl = newTrack.audioFile
+      ? URL.createObjectURL(newTrack.audioFile)
+      : undefined;
+
     const track: Track = {
       id: Date.now().toString(),
       title: newTrack.title,
@@ -88,6 +98,7 @@ function App() {
       duration: "3:30",
       plays: 0,
       uploadDate: new Date().toISOString().split("T")[0],
+      audioUrl,
     };
     setTracks([track, ...tracks]);
   };

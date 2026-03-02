@@ -61,22 +61,29 @@ export function MusicPlayer({ currentTrack, isPlaying, onPlayPause }: MusicPlaye
   useEffect(() => {
     if (audioRef.current && currentTrack?.audioUrl) {
       audioRef.current.src = currentTrack.audioUrl;
+      audioRef.current.load(); // Ensure the audio is loaded
       if (isPlaying) {
-        audioRef.current.play().catch(err => console.error('Error playing audio:', err));
+        audioRef.current.play().catch(err => {
+          console.error('Error playing audio:', err);
+          // Audio playback might be blocked by browser, will play when user interacts
+        });
       }
     }
   }, [currentTrack]);
 
   // Handle play/pause changes
   useEffect(() => {
-    if (audioRef.current) {
+    if (audioRef.current && currentTrack?.audioUrl) {
       if (isPlaying) {
-        audioRef.current.play().catch(err => console.error('Error playing audio:', err));
+        audioRef.current.play().catch(err => {
+          console.error('Error playing audio:', err);
+          // Audio playback might be blocked by browser
+        });
       } else {
         audioRef.current.pause();
       }
     }
-  }, [isPlaying]);
+  }, [isPlaying, currentTrack?.audioUrl]);
 
   // Handle volume changes
   useEffect(() => {
@@ -104,8 +111,16 @@ export function MusicPlayer({ currentTrack, isPlaying, onPlayPause }: MusicPlaye
     return null;
   }
 
+  // Show a message if the track doesn't have an audio URL
+  const hasAudio = !!currentTrack.audioUrl;
+
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-gray-900 via-black to-gray-900 text-white border-t border-gray-800 shadow-2xl z-40">
+      {!hasAudio && (
+        <div className="bg-yellow-600 text-white text-center py-1 px-4 text-sm">
+          ⚠️ This track doesn't have an audio file yet
+        </div>
+      )}
       <div className="max-w-7xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between gap-4">
           {/* Track Info */}
