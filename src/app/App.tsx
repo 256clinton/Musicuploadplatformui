@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Header } from "./components/Header";
-import { UploadModal } from "./components/UploadModal";
+import { EnhancedUploadModal } from "./components/EnhancedUploadModal";
 import { TrackCard } from "./components/TrackCard";
 import { MusicPlayer } from "./components/MusicPlayer";
 import { AdBanner } from "./components/AdBanner";
@@ -180,7 +180,7 @@ function App() {
         </div>
       </main>
 
-      <UploadModal
+      <EnhancedUploadModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
         onUpload={handleUpload}

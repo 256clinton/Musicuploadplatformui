@@ -479,6 +479,100 @@ app.post('/make-server-d629660d/tracks', async (c) => {
   }
 });
 
+// Enhanced track upload with full metadata
+app.post('/make-server-d629660d/tracks/enhanced', async (c) => {
+  const { user, error } = await getUserFromToken(c.req.header('Authorization'));
+  
+  if (error || !user) {
+    return c.json({ error: error || 'Unauthorized' }, 401);
+  }
+
+  try {
+    const body = await c.req.json();
+    const { 
+      title, artist, genre, language, coverUrl, releaseType, releaseDate,
+      songwriters, producers, lyrics, isExplicit, isrc, upc, 
+      copyrightHolder, publishingRights, platforms, plan, albumTracks, isPaid 
+    } = body;
+
+    if (!title || !artist || !genre) {
+      return c.json({ error: 'Title, artist, and genre are required' }, 400);
+    }
+
+    // Check upload eligibility
+    const userProfile = await kv.get(`user:${user.id}`);
+    const totalTracks = userProfile?.totalTracks || 0;
+    const paidUploads = userProfile?.paidUploads || 0;
+    const FREE_UPLOAD_LIMIT = 2;
+    const freeUploadsUsed = totalTracks - paidUploads;
+    
+    if (freeUploadsUsed >= FREE_UPLOAD_LIMIT && !isPaid) {
+      return c.json({ 
+        error: 'Free upload limit reached. Please complete payment to upload more tracks.',
+        requiresPayment: true 
+      }, 403);
+    }
+
+    const trackId = `track:${Date.now()}:${user.id}`;
+    const track = {
+      id: trackId,
+      userId: user.id,
+      title,
+      artist,
+      genre,
+      language: language || 'English',
+      coverUrl: coverUrl || '',
+      releaseType: releaseType || 'single',
+      releaseDate: releaseDate || new Date().toISOString(),
+      songwriters: songwriters || [],
+      producers: producers || [],
+      lyrics: lyrics || '',
+      isExplicit: isExplicit || false,
+      isrc: isrc || '',
+      upc: upc || '',
+      copyrightHolder: copyrightHolder || '',
+      publishingRights: publishingRights || '',
+      platforms: platforms || [],
+      plan: plan || 'single',
+      albumTracks: albumTracks || [],
+      status: 'pending',
+      plays: 0,
+      earnings: '0 UGX',
+      uploadDate: new Date().toISOString(),
+      approvedDate: null,
+      distributedDate: null
+    };
+
+    await kv.set(trackId, track);
+
+    // Update user track count
+    if (userProfile) {
+      userProfile.totalTracks = (userProfile.totalTracks || 0) + 1;
+      if (isPaid) {
+        userProfile.paidUploads = (userProfile.paidUploads || 0) + 1;
+      }
+      await kv.set(`user:${user.id}`, userProfile);
+    }
+
+    // Create notification for user
+    const notificationId = `notification:${Date.now()}:${user.id}`;
+    await kv.set(notificationId, {
+      id: notificationId,
+      userId: user.id,
+      type: 'track_status',
+      title: 'Track Submitted Successfully',
+      message: `Your track "${title}" has been submitted for review. We'll notify you when it's approved.`,
+      timestamp: new Date().toISOString(),
+      read: false
+    });
+
+    return c.json({ track });
+  } catch (error) {
+    console.error('Error uploading enhanced track:', error);
+    return c.json({ error: 'Failed to upload track' }, 500);
+  }
+});
+
 // Get all tracks (admin only)
 app.get('/make-server-d629660d/tracks/all', async (c) => {
   const { user, error } = await getUserFromToken(c.req.header('Authorization'));
@@ -824,6 +918,153 @@ app.post('/make-server-d629660d/ads/:id/impression', async (c) => {
   } catch (error) {
     console.error('Error tracking impression:', error);
     return c.json({ error: 'Failed to track impression' }, 500);
+  }
+});
+
+// ================ NOTIFICATION ROUTES ================
+
+// Get user notifications
+app.get('/make-server-d629660d/notifications', async (c) => {
+  const { user, error } = await getUserFromToken(c.req.header('Authorization'));
+  
+  if (error || !user) {
+    return c.json({ error: error || 'Unauthorized' }, 401);
+  }
+
+  try {
+    const allNotifications = await kv.getByPrefix('notification:');
+    const userNotifications = allNotifications
+      .filter((n: any) => n.userId === user.id)
+      .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    
+    return c.json({ notifications: userNotifications });
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    return c.json({ error: 'Failed to fetch notifications' }, 500);
+  }
+});
+
+// Mark notification as read
+app.patch('/make-server-d629660d/notifications/:id/read', async (c) => {
+  const { user, error } = await getUserFromToken(c.req.header('Authorization'));
+  
+  if (error || !user) {
+    return c.json({ error: error || 'Unauthorized' }, 401);
+  }
+
+  try {
+    const notificationId = c.req.param('id');
+    const notification = await kv.get(notificationId);
+    
+    if (!notification || notification.userId !== user.id) {
+      return c.json({ error: 'Notification not found' }, 404);
+    }
+
+    notification.read = true;
+    await kv.set(notificationId, notification);
+
+    return c.json({ notification });
+  } catch (error) {
+    console.error('Error marking notification as read:', error);
+    return c.json({ error: 'Failed to update notification' }, 500);
+  }
+});
+
+// Delete notification
+app.delete('/make-server-d629660d/notifications/:id', async (c) => {
+  const { user, error } = await getUserFromToken(c.req.header('Authorization'));
+  
+  if (error || !user) {
+    return c.json({ error: error || 'Unauthorized' }, 401);
+  }
+
+  try {
+    const notificationId = c.req.param('id');
+    const notification = await kv.get(notificationId);
+    
+    if (!notification || notification.userId !== user.id) {
+      return c.json({ error: 'Notification not found' }, 404);
+    }
+
+    await kv.del(notificationId);
+    return c.json({ message: 'Notification deleted' });
+  } catch (error) {
+    console.error('Error deleting notification:', error);
+    return c.json({ error: 'Failed to delete notification' }, 500);
+  }
+});
+
+// ================ COLLABORATION/SPLITS ROUTES ================
+
+// Create revenue split for a track
+app.post('/make-server-d629660d/tracks/:trackId/splits', async (c) => {
+  const { user, error } = await getUserFromToken(c.req.header('Authorization'));
+  
+  if (error || !user) {
+    return c.json({ error: error || 'Unauthorized' }, 401);
+  }
+
+  try {
+    const trackId = c.req.param('trackId');
+    const body = await c.req.json();
+    const { collaborators } = body;
+
+    const track = await kv.get(trackId);
+    if (!track || track.userId !== user.id) {
+      return c.json({ error: 'Track not found or access denied' }, 404);
+    }
+
+    const splitId = `split:${trackId}`;
+    const split = {
+      id: splitId,
+      trackId,
+      collaborators,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    await kv.set(splitId, split);
+
+    // Send notifications to collaborators
+    for (const collab of collaborators) {
+      if (collab.email) {
+        const notificationId = `notification:${Date.now()}:${collab.email}`;
+        await kv.set(notificationId, {
+          id: notificationId,
+          userId: collab.email,
+          type: 'collaboration',
+          title: 'Revenue Split Invitation',
+          message: `You've been invited to receive ${collab.percentage}% royalties for "${track.title}"`,
+          timestamp: new Date().toISOString(),
+          read: false
+        });
+      }
+    }
+
+    return c.json({ split });
+  } catch (error) {
+    console.error('Error creating split:', error);
+    return c.json({ error: 'Failed to create split' }, 500);
+  }
+});
+
+// Get splits for a track
+app.get('/make-server-d629660d/tracks/:trackId/splits', async (c) => {
+  const { user, error } = await getUserFromToken(c.req.header('Authorization'));
+  
+  if (error || !user) {
+    return c.json({ error: error || 'Unauthorized' }, 401);
+  }
+
+  try {
+    const trackId = c.req.param('trackId');
+    const splitId = `split:${trackId}`;
+    const split = await kv.get(splitId);
+
+    return c.json({ split: split || null });
+  } catch (error) {
+    console.error('Error fetching split:', error);
+    return c.json({ error: 'Failed to fetch split' }, 500);
   }
 });
 

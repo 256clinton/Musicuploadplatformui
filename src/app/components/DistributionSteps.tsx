@@ -5,10 +5,11 @@ interface DistributionStepsProps {
 }
 
 const steps = [
-  { number: 1, title: 'Upload Track', description: 'Add your music and artwork' },
-  { number: 2, title: 'Select Platforms', description: 'Choose where to distribute' },
-  { number: 3, title: 'Payment', description: 'Choose your plan' },
-  { number: 4, title: 'Review & Submit', description: 'Confirm and distribute' },
+  { number: 1, title: 'Release Info', description: 'Track details and upload' },
+  { number: 2, title: 'Platforms', description: 'Distribution channels' },
+  { number: 3, title: 'Metadata', description: 'Credits and artwork' },
+  { number: 4, title: 'Payment', description: 'Choose your plan' },
+  { number: 5, title: 'Review', description: 'Submit for distribution' },
 ];
 
 export function DistributionSteps({ currentStep }: DistributionStepsProps) {

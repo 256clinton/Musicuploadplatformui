@@ -24,8 +24,9 @@ import {
 import { useNavigate } from 'react-router';
 import { projectId, publicAnonKey } from '../../../utils/supabase/info';
 import { AdsManagement } from '../components/AdsManagement';
+import { AdminAnalyticsDashboard } from '../components/AdminAnalyticsDashboard';
 
-type Tab = 'dashboard' | 'tracks' | 'users' | 'ads' | 'settings';
+type Tab = 'dashboard' | 'analytics' | 'tracks' | 'users' | 'ads' | 'settings';
 
 interface Track {
   id: string;
@@ -225,6 +226,15 @@ export function AdminDashboard() {
             Dashboard
           </button>
           <button
+            onClick={() => setActiveTab('analytics')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              activeTab === 'analytics' ? 'bg-white/10' : 'hover:bg-white/5'
+            }`}
+          >
+            <BarChart3 className="w-5 h-5" />
+            Analytics
+          </button>
+          <button
             onClick={() => setActiveTab('tracks')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
               activeTab === 'tracks' ? 'bg-white/10' : 'hover:bg-white/5'
@@ -282,6 +292,7 @@ export function AdminDashboard() {
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-gray-900 mb-2">
               {activeTab === 'dashboard' && 'Dashboard Overview'}
+              {activeTab === 'analytics' && 'Platform Analytics'}
               {activeTab === 'tracks' && 'Track Management'}
               {activeTab === 'users' && 'User Management'}
               {activeTab === 'ads' && 'Ad Management'}
@@ -289,12 +300,18 @@ export function AdminDashboard() {
             </h2>
             <p className="text-gray-600">
               {activeTab === 'dashboard' && 'Monitor your platform performance'}
+              {activeTab === 'analytics' && 'Comprehensive insights and metrics'}
               {activeTab === 'tracks' && 'Review and approve track submissions'}
               {activeTab === 'users' && 'Manage artist accounts'}
               {activeTab === 'ads' && 'Manage advertisements'}
               {activeTab === 'settings' && 'Configure platform settings'}
             </p>
           </div>
+
+          {/* Analytics Tab */}
+          {activeTab === 'analytics' && (
+            <AdminAnalyticsDashboard stats={stats} tracks={tracks} users={users} />
+          )}
 
           {/* Dashboard Tab */}
           {activeTab === 'dashboard' && (
